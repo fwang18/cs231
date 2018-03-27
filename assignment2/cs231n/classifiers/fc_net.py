@@ -186,7 +186,7 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers):
             self.params['W'+str(i+1)] = np.random.randn(layers_dims[i], layers_dims[i+1]) * weight_scale
             self.params['b'+str(i+1)] = np.zeros(layers_dims[i+1])
-            if use_batchnorm:
+            if use_batchnorm and i != self.num_layers-1:
                 self.params['gamma'+str(i+1)] = np.ones((1, layers_dims[i + 1]))
                 self.params['beta'+str(i+1)] = np.zeros((1, layers_dims[i + 1]))
         ############################################################################
@@ -251,6 +251,7 @@ class FullyConnectedNet(object):
 
         # Forward pass: compute loss
         for i in range(self.num_layers-1):
+            #print(i+1)
             w, b = self.params['W' + str(i + 1)], self.params['b' + str(i+1)]
             if self.use_batchnorm:
                 gamma, beta = self.params['gamma' + str(i+1)], self.params['beta' + str(i + 1)]
@@ -266,6 +267,8 @@ class FullyConnectedNet(object):
 
         W, b = self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)]
         scores, cache = affine_forward(out[self.num_layers - 1], W, b)
+        
+        #print(self.params.keys())
         
         x_new = X.reshape(X.shape[0], -1)
         ############################################################################
@@ -298,13 +301,17 @@ class FullyConnectedNet(object):
         
         dout1, dbn, dh, ddrop = {}, {}, {}, {}
         dout1[self.num_layers-1], grads['W' + str(self.num_layers)], grads['b' + str(self.num_layers)] = affine_backward(dscores, cache)
+        #dh[t - 1 - i], grads['gamma' + str(t - i)], grads['beta' + str(t - i)] = batchnorm_backward(dbn[t - 1 - i],cache2[t - 1 - i])
         
         t=self.num_layers -1
         for i in range(t):
             if self.use_batchnorm:
                 if self.use_dropout:
                     dout1[t - i] = dropout_backward(dout1[t-i], cache4[t-1-i])
-                dbn[t - 1 - i] = relu_backward(dout1[t - i], cache3[t - 1 - i][1])
+                dbn[t - 1 - i] = relu_backward(dout1[t - i], cache3[t - 1 - i]) #[1]
+                #print(dbn[t - 1 - i])
+                #print(len(cache2[t - 1 - i]))
+                #print(batchnorm_backward(dbn[t - 1 - i],cache2[t - 1 - i]))
                 dh[t - 1 - i], grads['gamma' + str(t - i)], grads['beta' + str(t - i)] = batchnorm_backward(dbn[t - 1 - i],cache2[t - 1 - i])
                 dout1[t - 1 - i], grads['W' + str(t - i)], grads['b' + str(t - i)] = affine_backward(dh[t - 1 - i],cache1[t - 1 - i])
             else:
@@ -313,7 +320,7 @@ class FullyConnectedNet(object):
                     dout1[t - i] = dropout_backward(dout1[t - i], cache4[t - 1 - i])
                 dout1[t - 1 - i], grads['W' + str(t - i)], grads['b' + str(t - i)] = affine_relu_backward(dout1[t - i], cache3[t - 1 - i])
         
-        #print(grads)
+        #print(grads.keys())
         for i in range(self.num_layers):
             grads['W' + str(i + 1)] += self.reg * self.params['W' + str(i + 1)]
         
